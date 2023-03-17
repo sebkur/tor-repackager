@@ -2,6 +2,7 @@
 
 DIR=$(dirname $0)
 LIBS="$DIR/../build/lib-run"
+PROJECT_DIR=$(readlink -f "$DIR/../")
 
 if [ ! -d "$LIBS" ]; then
 	echo "Please run './gradlew createRuntime'"
@@ -10,4 +11,4 @@ fi
 
 CLASSPATH="$LIBS/*"
 
-exec java -cp "$CLASSPATH" "$@"
+exec java -Dprojectdir="$PROJECT_DIR" -cp "$CLASSPATH" "$@"

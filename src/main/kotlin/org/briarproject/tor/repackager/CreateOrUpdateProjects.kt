@@ -4,6 +4,9 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.net.URL
 import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
+import kotlin.system.exitProcess
+
+data class Versions(val tor: String, val obfs4proxy: String, val snowflake: String)
 
 fun main() {
     println("Tor Repackager 0.1.0")
@@ -32,11 +35,24 @@ fun main() {
     val torBrowserVersion = "12.0.3"
 
     // Map Tor Browser version to Tor versions
-    val browserToTor = mapOf(
-        "12.0.3" to "0.4.7.13"
+    val browserToVersions = mapOf(
+        "12.0.3" to Versions("0.4.7.13", "0.0.14", "2.5.1")
     )
 
-    val torVersion = browserToTor[torBrowserVersion]
+    val propProjectDir = System.getProperty("projectdir")
+    val project = if (propProjectDir != null) Paths.get(propProjectDir) else Paths.get("").toAbsolutePath()
+
+    val projectTemplate = project.resolve("projects/template")
+    val projectTor = project.resolve("projects/macos/tor")
+    val projectObfs4proxy = project.resolve("projects/macos/obfs4proxy")
+    val projectSnowflake = project.resolve("projects/macos/snowflake")
+
+    // TODO: create projects from template if not existing
+    // TODO: extract binaries to projects
+    // TODO: update version numbers in gradle.properties
+    // TODO: run ./gradlew clean publish on each project
+
+    val versions = browserToVersions[torBrowserVersion]
 
     for (target in macTargets) {
         val url =
