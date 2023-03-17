@@ -54,7 +54,7 @@ fun main() {
         if (propProjectDir != null) Paths.get(propProjectDir)
         else Paths.get("").toAbsolutePath()
 
-    val projectTemplate = torRepackager.resolve("projects/template")
+    val projectTemplate = torRepackager.resolve("template")
     // TODO: update version numbers in gradle.properties
     // TODO: run ./gradlew clean publish on each project
 
