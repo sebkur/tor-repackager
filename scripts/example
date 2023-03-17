@@ -1,0 +1,7 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+CMD="$DIR/tor-repackager.sh"
+CLASS="org.briarproject.tor.repackager.ExampleKt"
+
+exec "$CMD" "$CLASS" "$@"

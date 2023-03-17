@@ -1,0 +1,35 @@
+plugins {
+    id("java")
+    id("org.jetbrains.kotlin.jvm") version "1.7.20"
+}
+
+wrapper {
+    gradleVersion = '7.2'
+}
+
+group = pGroup
+version = pVersion
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+}
+
+task copyJars(type: Copy) {
+    into "$buildDir/lib-run"
+    from jar
+}
+
+task copyDeps(type: Copy) {
+    into "$buildDir/lib-run"
+    from configurations.runtimeClasspath
+}
+
+task createRuntime(dependsOn: [copyJars, copyDeps]) {
+    description 'Setup the execution environment for the main scripts'
+}
