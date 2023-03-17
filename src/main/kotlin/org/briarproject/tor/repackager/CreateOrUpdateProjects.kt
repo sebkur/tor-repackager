@@ -14,9 +14,12 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
 import kotlin.io.path.outputStream
+import kotlin.io.path.readText
 import kotlin.io.path.walk
+import kotlin.io.path.writeText
 
 data class Versions(val tor: String, val obfs4proxy: String, val snowflake: String)
+data class Project(val name: String, val dir: Path)
 
 fun main() {
     println("Tor Repackager 0.1.0")
@@ -46,6 +49,7 @@ fun main() {
 
     // Map Tor Browser version to Tor versions
     val browserToVersions = mapOf(
+        // TODO: make sure these versions are accurate
         "12.0.3" to Versions("0.4.7.13", "0.0.14", "2.5.1")
     )
 
@@ -55,34 +59,41 @@ fun main() {
         else Paths.get("").toAbsolutePath()
 
     val projectTemplate = torRepackager.resolve("template")
-    // TODO: update version numbers in gradle.properties
-    // TODO: run ./gradlew clean publish on each project
-
-    val versions = browserToVersions[torBrowserVersion]
+    val versions = requireNotNull(browserToVersions[torBrowserVersion])
 
     val dirLinux = torRepackager.resolve("projects/linux")
-    createTemplate(linuxTargets, dirLinux, projectTemplate, torBrowserVersion)
+    createUpdateTemplate(linuxTargets, dirLinux, projectTemplate, torBrowserVersion, versions)
 
     val dirMacOs = torRepackager.resolve("projects/macos")
-    createTemplate(macTargets, dirMacOs, projectTemplate, torBrowserVersion)
+    createUpdateTemplate(macTargets, dirMacOs, projectTemplate, torBrowserVersion, versions)
 
     val dirWindows = torRepackager.resolve("projects/windows")
-    createTemplate(windowsTargets, dirWindows, projectTemplate, torBrowserVersion)
+    createUpdateTemplate(windowsTargets, dirWindows, projectTemplate, torBrowserVersion, versions)
 
     val dirAndroid = torRepackager.resolve("projects/android")
-    createTemplate(androidTargets, dirAndroid, projectTemplate, torBrowserVersion)
+    createUpdateTemplate(androidTargets, dirAndroid, projectTemplate, torBrowserVersion, versions)
+
+    // TODO: run ./gradlew clean publish on each project
 }
 
-fun createTemplate(targets: List<Target>, dirOs: Path, projectTemplate: Path, torBrowserVersion: String) {
-    val projectTor = dirOs.resolve("tor")
-    val projectObfs4proxy = dirOs.resolve("obfs4proxy")
-    val projectSnowflake = dirOs.resolve("snowflake")
+fun createUpdateTemplate(
+    targets: List<Target>,
+    dirOs: Path,
+    projectTemplate: Path,
+    torBrowserVersion: String,
+    versions: Versions
+) {
+    println("Working on: " + targets.joinToString(", ") { it.id })
+    val os = targets[0].os.id
+
+    val projectTor = Project("tor", dirOs.resolve("tor"))
+    val projectObfs4proxy = Project("obfs4proxy", dirOs.resolve("obfs4proxy"))
+    val projectSnowflake = Project("snowflake", dirOs.resolve("snowflake"))
 
     val projects = listOf(projectTor, projectObfs4proxy, projectSnowflake)
     for (project in projects) {
-        createFromTemplate(project, projectTemplate)
+        createFromTemplate(project, projectTemplate, os)
     }
-    println("Working on: " + targets.joinToString(", ") { it.id })
     for (target in targets) {
         val url =
             "https://www.torproject.org/dist/torbrowser/$torBrowserVersion/tor-expert-bundle-$torBrowserVersion-${target.torQualifier}.tar.gz"
@@ -99,9 +110,11 @@ fun createTemplate(targets: List<Target>, dirOs: Path, projectTemplate: Path, to
                                 "tor/tor", "tor/libevent-2.1.7.dylib" -> {
                                     copyToProject(entry, tar, target, projectTor)
                                 }
+
                                 "tor/pluggable_transports/obfs4proxy" -> {
                                     copyToProject(entry, tar, target, projectObfs4proxy)
                                 }
+
                                 "tor/pluggable_transports/snowflake-client" -> {
                                     copyToProject(entry, tar, target, projectSnowflake, "snowflake$extension")
                                 }
@@ -112,24 +125,34 @@ fun createTemplate(targets: List<Target>, dirOs: Path, projectTemplate: Path, to
             }
         }
     }
+
+    updateGradleProperties(projectTor) { replace("pVersion=.*".toRegex(), "pVersion=${versions.tor}") }
+    updateGradleProperties(projectObfs4proxy) { replace("pVersion=.*".toRegex(), "pVersion=${versions.obfs4proxy}") }
+    updateGradleProperties(projectSnowflake) { replace("pVersion=.*".toRegex(), "pVersion=${versions.snowflake}") }
 }
 
 @OptIn(ExperimentalPathApi::class)
-fun createFromTemplate(project: Path, template: Path) {
-    project.createDirectories()
+fun createFromTemplate(project: Project, template: Path, os: String) {
+    project.dir.createDirectories()
     for (path in template.walk()) {
         val relative = template.relativize(path)
         if (relative.getName(0) == Paths.get("build")) continue
         if (relative.getName(0) == Paths.get(".gradle")) continue
-        val target = project.resolve(relative)
+        val target = project.dir.resolve(relative)
         target.parent.createDirectories()
         path.copyTo(target, StandardCopyOption.REPLACE_EXISTING)
     }
+    updateGradleProperties(project) { replace("template", "${project.name}-$os") }
 }
 
-fun copyToProject(entry: TarArchiveEntry, tar: InputStream, target: Target, project: Path, name: String? = null) {
+fun updateGradleProperties(project: Project, transform: String.() -> String) {
+    val gradleProperties = project.dir.resolve("gradle.properties")
+    gradleProperties.writeText(transform(gradleProperties.readText()))
+}
+
+fun copyToProject(entry: TarArchiveEntry, tar: InputStream, target: Target, project: Project, name: String? = null) {
     val filename = name ?: Paths.get(entry.name).fileName.toString()
-    val resources = project.resolve("src/main/resources")
+    val resources = project.dir.resolve("src/main/resources")
     val file = resources.resolve("${target.jarName}/$filename")
     file.parent.createDirectories()
     println("${entry.name} → ${target.jarName}/$filename")
