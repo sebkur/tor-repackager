@@ -12,13 +12,12 @@ enum class OS(val id: String) {
 enum class Arch(
     val id: String,
     val torName: String, // This name is used when resolving bundle names.
-    val jarName: String, // This name is used when resolving jar qualifiers.
 ) {
-    X64("x86_64", "x86_64", "x86_64"),
-    X86("x86", "x86", "x86"),
-    I686("i686", "i686", "i686"),
-    Arm64("arm64", "aarch64", "arm64-v8a"),
-    Armv7("armv7", "armv7", "armeabi-v7a"),
+    X64("x86_64", "x86_64"),
+    X86("x86", "x86"),
+    I686("i686", "i686"),
+    Arm64("arm64", "aarch64"),
+    Armv7("armv7", "armv7"),
 }
 
 internal fun arch(arch: String?): Arch {
@@ -30,11 +29,11 @@ internal fun arch(arch: String?): Arch {
     error("Invalid architecture '$arch'")
 }
 
-data class Target(val os: OS, val arch: Arch) : Serializable {
+data class Target(val os: OS, val arch: Arch, val archName: String? = null) : Serializable {
     val id: String
         get() = "${os.id}-${arch.id}"
     val torQualifier: String
         get() = "${os.id}-${arch.torName}"
-    val name: String
-        get() = "${os.id.uppercaseFirstChar()}${arch.id.uppercaseFirstChar()}"
+    val jarName: String
+        get() = archName ?: arch.torName
 }
