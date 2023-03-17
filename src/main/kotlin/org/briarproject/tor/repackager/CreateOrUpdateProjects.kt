@@ -82,6 +82,7 @@ fun createTemplate(targets: List<Target>, dirOs: Path, projectTemplate: Path, to
     for (project in projects) {
         createFromTemplate(project, projectTemplate)
     }
+    println("Working on: " + targets.joinToString(", ") { it.id })
     for (target in targets) {
         val url =
             "https://www.torproject.org/dist/torbrowser/$torBrowserVersion/tor-expert-bundle-$torBrowserVersion-${target.torQualifier}.tar.gz"
