@@ -16,7 +16,7 @@ publishing {
     }
     repositories {
         maven{
-            url = '../../maven'
+            url = '../../../maven'
         }
     }
 }
