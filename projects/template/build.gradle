@@ -1,0 +1,26 @@
+wrapper {
+    gradleVersion = '6.5.1'
+}
+
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+group = pGroup
+version = pVersion
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven{
+            url = '../../maven'
+        }
+    }
+}
+
+tasks.withType(GenerateModuleMetadata) {
+    enabled = false
+}
