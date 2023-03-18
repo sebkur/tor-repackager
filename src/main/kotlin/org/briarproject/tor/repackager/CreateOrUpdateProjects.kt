@@ -11,7 +11,6 @@ import java.nio.file.StandardOpenOption.CREATE
 import java.nio.file.StandardOpenOption.TRUNCATE_EXISTING
 import java.util.zip.GZIPInputStream
 import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.absolute
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
 import kotlin.io.path.outputStream
