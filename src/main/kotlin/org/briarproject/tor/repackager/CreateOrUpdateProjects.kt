@@ -48,12 +48,13 @@ fun main() {
     )
 
     // Define current Tor Browser version
-    val torBrowserVersion = "12.0.3"
+    val torBrowserVersion = "12.0.4"
 
     // Map Tor Browser version to Tor versions
     val browserToVersions = mapOf(
         // TODO: make sure these versions are accurate
-        "12.0.3" to Versions("0.4.7.13", "0.0.14", "2.5.1")
+        "12.0.3" to Versions("0.4.7.13", "0.0.14", "2.5.1"),
+        "12.0.4" to Versions("0.4.7.13", "0.0.14", "2.5.1"),
     )
 
     val propProjectDir = System.getProperty("projectdir")

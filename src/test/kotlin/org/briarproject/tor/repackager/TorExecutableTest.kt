@@ -24,7 +24,7 @@ class TorExecutableTest {
 
     @Test
     fun test() {
-        val torBrowserVersion = "12.0.3"
+        val torBrowserVersion = "12.0.4"
         extract(torBrowserVersion)
 
         val tor = "tor$extension"
