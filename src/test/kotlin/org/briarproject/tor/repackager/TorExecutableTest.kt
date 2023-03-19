@@ -2,9 +2,10 @@ package org.briarproject.tor.repackager
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.io.InputStream
 import java.net.URL
 import java.nio.file.Files
@@ -13,14 +14,29 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
+import kotlin.io.path.absolute
 import kotlin.io.path.outputStream
 
 class TorExecutableTest {
 
-    @TempDir
     lateinit var dir: Path
 
     private val extension = if (currentTarget.os == OS.Windows) ".exe" else ""
+
+    @BeforeEach
+    fun init() {
+        // Don't use a JUnit temporary directory to prevent deletion on Windows.
+        // For some reason on Windows the tor.exe cannot be deleted after execution.
+        // Probably https://superuser.com/questions/338567/why-cant-i-delete-some-exe-files/521349#521349
+        dir = Files.createTempDirectory("tor")
+    }
+
+    @AfterEach
+    fun cleanup() {
+        if (currentOS != OS.Windows) {
+            dir.toFile().deleteRecursively()
+        }
+    }
 
     @Test
     fun test() {
@@ -28,10 +44,11 @@ class TorExecutableTest {
         extract(torBrowserVersion)
 
         val tor = "tor$extension"
+        val exe = dir.resolve(tor).absolute().toString()
 
         println("Starting Tor")
         dir.resolve(tor).toFile().setExecutable(true, true)
-        val process = ProcessBuilder("./$tor").directory(dir.toFile()).start()
+        val process = ProcessBuilder(exe).directory(dir.toFile()).start()
         println("waiting for three seconds to see if it exits")
         val result = process.waitFor(3, TimeUnit.SECONDS)
         println("done waiting")
@@ -78,6 +95,7 @@ class TorExecutableTest {
     private fun copy(entry: TarArchiveEntry, tar: InputStream, name: String? = null) {
         val filename = name ?: Paths.get(entry.name).fileName.toString()
         val file = dir.resolve(filename)
+        println("extracting $file")
         file.outputStream(StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING).use { output ->
             tar.copyTo(output)
         }
