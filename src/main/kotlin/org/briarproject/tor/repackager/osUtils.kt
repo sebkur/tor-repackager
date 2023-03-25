@@ -18,6 +18,7 @@ enum class Arch(
     I686("i686", "i686"),
     Arm64("arm64", "aarch64"),
     Armv7("armv7", "armv7"),
+    Any("any", "any"),
 }
 
 internal fun arch(arch: String?): Arch {

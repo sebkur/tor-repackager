@@ -4,15 +4,18 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.InputStream
 import java.net.URL
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.StandardCopyOption
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.StandardOpenOption.CREATE
 import java.nio.file.StandardOpenOption.TRUNCATE_EXISTING
 import java.util.zip.GZIPInputStream
 import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
+import kotlin.io.path.name
 import kotlin.io.path.outputStream
 import kotlin.io.path.readText
 import kotlin.io.path.walk
@@ -77,10 +80,14 @@ fun main() {
     val projectsAndroid = projects(torRepackager.resolve("projects/android"))
     createUpdateTemplate(androidTargets, projectsAndroid, projectTemplate, torBrowserVersion, versions)
 
+    val projectsMacOs2 = projects(torRepackager.resolve("projects/macos2"))
+    createUpdateTemplateMacFromTorBrowser(projectsMacOs2, projectTemplate, torBrowserVersion, versions)
+
     runGradlePublish(projectsLinux)
     runGradlePublish(projectsMacOs)
     runGradlePublish(projectsWindows)
     runGradlePublish(projectsAndroid)
+    runGradlePublish(projectsMacOs2)
 }
 
 fun runGradlePublish(projects: OsProjects) {
@@ -96,7 +103,6 @@ fun projects(dirOs: Path): OsProjects {
     val projectSnowflake = Project("snowflake", dirOs.resolve("snowflake"))
     return OsProjects(projectTor, projectObfs4proxy, projectSnowflake)
 }
-
 
 fun createUpdateTemplate(
     targets: List<Target>,
@@ -142,7 +148,61 @@ fun createUpdateTemplate(
             }
         }
     }
+    updateGradleProperties(projects, versions)
+}
 
+fun createUpdateTemplateMacFromTorBrowser(
+    projects: OsProjects,
+    projectTemplate: Path,
+    torBrowserVersion: String,
+    versions: Versions
+) {
+    println("Working on: macos-any")
+    val target = Target(OS.MacOS, Arch.Any)
+    val os = target.os.id
+
+    for (project in projects.list) {
+        createFromTemplate(project, projectTemplate, os, "${project.name}-$os-torbrowser")
+    }
+    val url =
+        "https://www.torproject.org/dist/torbrowser/$torBrowserVersion/TorBrowser-$torBrowserVersion-macos_ALL.dmg"
+    println(url)
+
+    // Download DMG to temporary directory and extract it there
+    val dir = Files.createTempDirectory("tor")
+    Runtime.getRuntime().addShutdownHook(Thread {
+        dir.toFile().deleteRecursively()
+    })
+
+    // File to download DMG to
+    val fileDmg = dir.resolve("tor-browser.dmg")
+    // Directory to extract DMG to
+    val dirDmg = dir.resolve("dmg")
+
+    // Download DMG
+    URL(url).openStream().use { urlInput ->
+        fileDmg.outputStream().use { fos ->
+            urlInput.copyTo(fos)
+        }
+    }
+
+    // Extract DMG using 7z
+    dirDmg.createDirectories()
+    ProcessBuilder("7z", "x", fileDmg.absolutePathString()).directory(dirDmg.toFile()).start().waitFor()
+
+    // Extract binaries
+    val dirTor = dirDmg.resolve("Tor Browser/Tor Browser.app/Contents/MacOS/Tor")
+    val dirPluggable = dirTor.resolve("PluggableTransports")
+
+    copyToProject(dirTor.resolve("tor.real"), target, projects.projectTor, "tor")
+    copyToProject(dirTor.resolve("libevent-2.1.7.dylib"), target, projects.projectTor)
+    copyToProject(dirPluggable.resolve("obfs4proxy"), target, projects.projectObfs4proxy)
+    copyToProject(dirPluggable.resolve("snowflake-client"), target, projects.projectSnowflake, "snowflake")
+
+    updateGradleProperties(projects, versions)
+}
+
+fun updateGradleProperties(projects: OsProjects, versions: Versions) {
     updateGradleProperties(projects.projectTor) {
         replace(
             "pVersion=.*".toRegex(),
@@ -164,7 +224,7 @@ fun createUpdateTemplate(
 }
 
 @OptIn(ExperimentalPathApi::class)
-fun createFromTemplate(project: Project, template: Path, os: String) {
+fun createFromTemplate(project: Project, template: Path, os: String, name: String? = null) {
     project.dir.createDirectories()
     for (path in template.walk()) {
         val relative = template.relativize(path)
@@ -172,9 +232,10 @@ fun createFromTemplate(project: Project, template: Path, os: String) {
         if (relative.getName(0) == Paths.get(".gradle")) continue
         val target = project.dir.resolve(relative)
         target.parent.createDirectories()
-        path.copyTo(target, StandardCopyOption.REPLACE_EXISTING)
+        path.copyTo(target, REPLACE_EXISTING)
     }
-    updateGradleProperties(project) { replace("template", "${project.name}-$os") }
+    val projectName = name ?: "${project.name}-$os"
+    updateGradleProperties(project) { replace("template", projectName) }
 }
 
 fun updateGradleProperties(project: Project, transform: String.() -> String) {
@@ -191,4 +252,13 @@ fun copyToProject(entry: TarArchiveEntry, tar: InputStream, target: Target, proj
     file.outputStream(CREATE, TRUNCATE_EXISTING).use { output ->
         tar.copyTo(output)
     }
+}
+
+fun copyToProject(input: Path, target: Target, project: Project, name: String? = null) {
+    val filename = name ?: input.name
+    val resources = project.dir.resolve("src/main/resources")
+    val file = resources.resolve("${target.jarName}/$filename")
+    file.parent.createDirectories()
+    println("${file.name} → ${target.jarName}/$filename")
+    input.copyTo(file, REPLACE_EXISTING)
 }
