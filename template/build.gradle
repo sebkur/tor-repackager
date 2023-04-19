@@ -1,26 +1,24 @@
-wrapper {
-    gradleVersion = '6.5.1'
+plugins {
+	id 'java-library'
+	id 'com.vanniktech.maven.publish' version '0.25.2'
 }
 
-apply plugin: 'java'
-apply plugin: 'maven-publish'
+wrapper {
+    gradleVersion = '7.4.2'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 group = pGroup
 version = pVersion
 
 publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
-        }
-    }
     repositories {
-        maven{
-            url = '../../../maven'
+        maven {
+            url = layout.projectDir.dir('../../../maven')
         }
     }
-}
-
-tasks.withType(GenerateModuleMetadata) {
-    enabled = false
 }
