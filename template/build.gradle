@@ -15,6 +15,7 @@ java {
 group = pGroup
 version = pVersion
 
+// To publish to Maven Central, remove this stanza entierly
 publishing {
     repositories {
         maven {
