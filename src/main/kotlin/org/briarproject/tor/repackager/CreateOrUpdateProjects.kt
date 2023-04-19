@@ -60,6 +60,8 @@ fun main() {
         "12.0.4" to Versions("0.4.7.13", "0.0.14", "2.5.1"),
     )
 
+    val browserVersions = Versions(torBrowserVersion, torBrowserVersion, torBrowserVersion)
+
     val propProjectDir = System.getProperty("projectdir")
     val torRepackager =
         if (propProjectDir != null) Paths.get(propProjectDir)
@@ -81,7 +83,7 @@ fun main() {
     createUpdateTemplate(androidTargets, projectsAndroid, projectTemplate, torBrowserVersion, versions)
 
     val projectsMacOs2 = projects(torRepackager.resolve("projects/macos2"))
-    createUpdateTemplateMacFromTorBrowser(projectsMacOs2, projectTemplate, torBrowserVersion, versions)
+    createUpdateTemplateMacFromTorBrowser(projectsMacOs2, projectTemplate, torBrowserVersion, browserVersions)
 
     runGradlePublish(projectsLinux)
     runGradlePublish(projectsMacOs)
