@@ -2,6 +2,6 @@
 
 DIR=$(dirname $0)
 CMD="$DIR/tor-repackager.sh"
-CLASS="org.briarproject.tor.repackager.CreateOrUpdateProjectsKt"
+CLASS="org.briarproject.tor.repackager.CreateOrUpdateProjectsFromExpertBundleKt"
 
 exec "$CMD" "$CLASS" "$@"
